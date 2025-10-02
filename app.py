@@ -6,8 +6,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from utils.storage import DRAW_LOG, COLS, append_row
+from utils.storage import DRAW_LOG, COLS, append_row, get_subscription, get_subscription_detail
 from utils.share_image import build_share_image
+from utils.subscription_status import show_user_status
 from schools.registry import SCHOOLS
 from schools.lifepath import analysis as lifepath_analysis
 from schools.west_astrology import analysis as west_analysis
@@ -20,18 +21,27 @@ st.set_page_config(page_title="幸運99", page_icon="assets/favicon.png", layout
 st.markdown("<style>.block-container{max-width:1280px}</style>", unsafe_allow_html=True)
 
 st.image("assets/logo.png", width=80)
-st.title("🌟 幸運99｜學派分析 → 抽卡提醒（覆蓋版）")
+st.title("🌟 幸運99｜學派分析 → 抽卡提醒（會員浮標版）")
 
 # User panel
 with st.container(border=True):
-    c1,c2 = st.columns([2,2])
+    c1,c2,c3 = st.columns([2,2,1])
     with c1:
         username = st.text_input("你的稱呼", value=st.session_state.get("username",""))
-        st.session_state["username"] = username
+        st.session_state["username"] = username or "訪客"
     with c2:
         st.markdown("**推薦碼**")
-        code = hashlib.md5((username or "guest").encode("utf-8")).hexdigest()[:8]
+        code = hashlib.md5((st.session_state["username"]).encode("utf-8")).hexdigest()[:8]
         st.code(code, language="text")
+    with c3:
+        plan_now = get_subscription(st.session_state["username"])
+        st.markdown(f"目前方案：**{plan_now}**")
+
+# membership badge
+plan, expiry_ts, status = get_subscription_detail(st.session_state["username"])
+st.session_state["plan"] = plan
+st.session_state["expiry_date"] = expiry_ts
+show_user_status()
 
 st.markdown("---")
 
@@ -55,26 +65,36 @@ if "gender" in reqs:
 if "question" in reqs:
     user_inputs["question"] = st.text_input("你的提問（例如：本月適合談合作嗎？）")
 
-# Analysis-first
+# Analysis-first (Free shows basic; Pro/VIP 可顯示詳細)
 st.subheader("📘 學派分析")
-analysis_text = ""
+detail = (plan in ("Pro","VIP"))
 if school_key == "lifepath":
-    analysis_text = lifepath_analysis(user_inputs.get("birth_date"))
+    from schools.lifepath import analysis as lifepath
+    analysis_text = lifepath(user_inputs.get("birth_date"), detail=detail)
 elif school_key == "west_astrology":
-    analysis_text = west_analysis(user_inputs.get("birth_date"))
+    from schools.west_astrology import analysis as west
+    analysis_text = west(user_inputs.get("birth_date"), detail=detail)
 elif school_key == "tarot":
-    analysis_text = tarot_intro(user_inputs.get("question"))
+    from schools.tarot import analysis as tarot
+    analysis_text = tarot(user_inputs.get("question"), detail=detail)
 elif school_key == "zodiac_cn":
-    analysis_text = zodiac_analysis(user_inputs.get("birth_date"))
+    from schools.zodiac_cn import analysis as zodiac
+    analysis_text = zodiac(user_inputs.get("birth_date"), detail=detail)
 elif school_key == "ziwei":
-    analysis_text = ziwei_analysis(user_inputs.get("birth_date"), user_inputs.get("gender"))
+    from schools.ziwei import analysis as ziwei
+    analysis_text = ziwei(user_inputs.get("birth_date"), user_inputs.get("gender"), detail=detail)
 elif school_key == "bazi":
-    analysis_text = bazi_analysis(user_inputs.get("birth_date"), user_inputs.get("birth_time"))
+    from schools.bazi import analysis as bazi
+    analysis_text = bazi(user_inputs.get("birth_date"), user_inputs.get("birth_time"), detail=detail)
+else:
+    analysis_text = ""
+if not detail and school_key in ("zodiac_cn","ziwei","bazi","west_astrology","lifepath"):
+    analysis_text += "\n\n👉 想看【詳細版】學派分析？升級 **Pro / VIP** 立即解鎖。"
 st.markdown(analysis_text or "填入必要資料後，將顯示你的分析報告。")
 
 st.markdown("---")
 
-# Draw card
+# Draw
 st.subheader("🎲 抽卡提醒")
 CARD_SYSTEMS = {
     "貴人":{"color_primary":"#F2D9B3","color_secondary":"#FBEDE3","samples":{"占星":{"fortune":"星盤顯示貴人正在靠近你。","note":"你不必獨自一人走完全程，宇宙已經在安排相遇。","task":"主動問候一位好久不聯絡的朋友。"},"心理":{"fortune":"你內在的守護者原型正準備出場。","note":"允許自己接受幫助，是成熟與勇氣。","task":"今天說出一句『需要幫忙』，並接受它。"},"宇宙":{"fortune":"銀光小狐將在你需要時出現。","note":"當你善待自己，貴人就會看見你的光。","task":"寫下感謝清單 3 件事。"}}},
@@ -93,7 +113,7 @@ with colA:
     system = st.selectbox("選擇卡系", list(CARD_SYSTEMS.keys()), index=0)
     tarot_mode = "單張"
     if school_key == "tarot":
-        tarot_mode = st.radio("塔羅模式", ["單張（Free）","三張（升級）"], horizontal=True)
+        tarot_mode = st.radio("塔羅模式", ["單張（Free）","三張（Pro）"], horizontal=True)
     if st.button("抽一張提醒", use_container_width=True):
         tone = tone_for_school(school_key)
         base = CARD_SYSTEMS[system]["samples"][tone if tone in CARD_SYSTEMS[system]["samples"] else "心理"]
@@ -102,19 +122,17 @@ with colA:
                 "ts":datetime.now().isoformat(timespec="seconds"),"user":st.session_state.get("username") or "訪客","school_key":school_key,"inputs":user_inputs}
         if school_key == "tarot":
             seed = f"{st.session_state.get('username')}-{datetime.now().date()}-{system}"
-            if "三張" in tarot_mode:
+            if "三張" in tarot_mode and st.session_state.get("plan") not in ("Pro","VIP"):
+                card["fortune"]="（Pro 付費功能）"; card["note"]="升級後可解鎖『過去-現在-未來』三張牌。"; card["task"]="先用單張模式體驗看看。"
+            elif "三張" in tarot_mode:
                 tri = draw_three(seed=seed)
                 lines = [f"{t['slot']}：《{t['name']}·{t['pose']}》{t['meaning']}" for t in tri]
                 q = user_inputs.get("question") or "今天的提醒"
-                card["fortune"] = " / ".join(lines)
-                card["note"] = f"針對「{q}」，三張牌給出路徑。｜{card['note']}"
-                card["task"] = "把三件可行的小步驟寫下，先完成第一步。"
+                card["fortune"] = " / ".join(lines); card["note"] = f"針對「{q}」，三張牌給出路徑。｜{card['note']}"; card["task"] = "把三件可行的小步驟寫下，先完成第一步。"
             else:
                 one = draw_one(seed=seed)
                 q = user_inputs.get("question") or "今天的提醒"
-                card["fortune"] = f"塔羅《{one['name']}·{one['pose']}》：{one['meaning']}"
-                card["note"] = f"針對「{q}」，掌握牌義行動的第一步。｜{card['note']}"
-                card["task"] = "把你可行的一步寫下，今天就做。"
+                card["fortune"] = f"塔羅《{one['name']}·{one['pose']}》：{one['meaning']}"; card["note"] = f"針對「{q}」，掌握牌義行動的第一步。｜{card['note']}"; card["task"] = "把你可行的一步寫下，今天就做。"
         st.session_state["last_card"] = card
 
 card = st.session_state.get("last_card")
@@ -137,4 +155,4 @@ with colB:
         with open(out_path, "rb") as fr:
             st.download_button("下載分享圖（PNG）", data=fr.read(), file_name=os.path.basename(out_path), mime="image/png", use_container_width=True)
 
-st.caption("© 2025 幸運99（Lucky99）｜學派分析 → 抽卡提醒（覆蓋版）")
+st.caption("© 2025 幸運99（Lucky99）｜學派擴充 + 會員狀態浮標")
