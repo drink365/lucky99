@@ -30,3 +30,14 @@ def draw_one(seed=None):
     meaning = reversed_meaning if reversed_flag else upright
     pose = "逆位" if reversed_flag else "正位"
     return {"name": name, "pose": pose, "meaning": meaning}
+def draw_three(seed=None):
+    rng = random.Random(seed)
+    picks = rng.sample(TAROT_CARDS, 3)
+    out = []
+    for i, (name, up, rev) in enumerate(picks):
+        reversed_flag = rng.choice([True, False])
+        meaning = rev if reversed_flag else up
+        pose = "逆位" if reversed_flag else "正位"
+        slot = ["過去","現在","未來"][i]
+        out.append({"slot": slot, "name": name, "pose": pose, "meaning": meaning})
+    return out
