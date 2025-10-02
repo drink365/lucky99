@@ -1,4 +1,8 @@
 
+import streamlit as st, hashlib
+
+BRAND = "幸運99"
+
 CARD_SYSTEMS = {
     "貴人": {
         "color_primary": "#F2D9B3",
@@ -85,15 +89,16 @@ CARD_SYSTEMS = {
         }
     }
 }
+
 SCHOOLS = ["占星", "心理", "宇宙"]
 DEFAULT_USER = "訪客"
+
 import os
-DATA_DIR = os.path.join(os.getcwd(), "data") if os.path.exists(os.path.join(os.getcwd(), "data")) else "/mnt/data"
+DATA_DIR = os.path.join(os.getcwd(), "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 DRAW_LOG = os.path.join(DATA_DIR, "draw_log.csv")
 SIGNIN_LOG = os.path.join(DATA_DIR, "signin_log.csv")
-os.makedirs(DATA_DIR, exist_ok=True)
 
-import streamlit as st, hashlib
 
 st.set_page_config(page_title='分享與推薦', page_icon='📣', layout='centered')
 st.title('📣 分享與推薦')
@@ -117,7 +122,7 @@ st.markdown('---')
 st.subheader('一鍵分享文案（可複製貼上 IG / LINE）')
 
 share_text = f"""
-今天抽到我的 AI 幸運卡 ✨
+今天抽到我的 幸運99 ✨
 感覺被宇宙溫柔地照顧著：）
 
 想一起抽嗎？輸入我的推薦碼 {code} 加入，

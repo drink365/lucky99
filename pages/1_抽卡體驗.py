@@ -1,4 +1,10 @@
 
+import streamlit as st, os, pandas as pd, random
+from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
+
+BRAND = "幸運99"
+
 CARD_SYSTEMS = {
     "貴人": {
         "color_primary": "#F2D9B3",
@@ -85,17 +91,17 @@ CARD_SYSTEMS = {
         }
     }
 }
+
 SCHOOLS = ["占星", "心理", "宇宙"]
 DEFAULT_USER = "訪客"
+
 import os
-DATA_DIR = os.path.join(os.getcwd(), "data") if os.path.exists(os.path.join(os.getcwd(), "data")) else "/mnt/data"
+# 使用專案根目錄的 data 資料夾（安全相對路徑）
+DATA_DIR = os.path.join(os.getcwd(), "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 DRAW_LOG = os.path.join(DATA_DIR, "draw_log.csv")
 SIGNIN_LOG = os.path.join(DATA_DIR, "signin_log.csv")
-os.makedirs(DATA_DIR, exist_ok=True)
 
-import streamlit as st, os, pandas as pd, random
-from datetime import datetime
-from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(page_title='抽卡體驗', page_icon='✨', layout='centered')
 
@@ -105,6 +111,7 @@ school = st.session_state.get('school', '占星')
 
 st.markdown(f'使用者：**{username}**｜偏好學派：**{school}**')
 
+# 每日種子（讓「每日一抽」較穩定，但仍可在同日多抽不同卡系）
 today_key = f'{username}-{datetime.now().date()}-seed'
 if 'seed' not in st.session_state or st.session_state.get('seed_key') != today_key:
     import random
@@ -132,13 +139,15 @@ if st.button('🎲 今天抽一張', use_container_width=True):
     result = draw_card(selected_system, school)
     st.session_state.last_card = result
 
+# show result
 card = st.session_state.get('last_card')
 if card:
     st.success(f"你抽到：**{card['system']}卡**（學派：{card['school']}）")
     with st.container(border=True):
-        st.markdown(f"**籤語**：{card['fortune']}" )
-        st.markdown(f"**小語**：{card['note']}" )
-        st.markdown(f"**今日任務**：{card['task']}" )
+        st.markdown(f"**籤語**：{card['fortune']}")
+        st.markdown(f"**小語**：{card['note']}")
+        st.markdown(f"**今日任務**：{card['task']}")
+    # Save to log
     import csv
     header = ['ts','user','system','school','fortune','note','task']
     first = not os.path.exists(DRAW_LOG)
@@ -150,20 +159,24 @@ if card:
     st.markdown('—')
     st.subheader('🖼️ 生成分享圖卡')
     if st.button('生成 PNG 圖卡', use_container_width=True):
-        W, H = 1080, 1350
-        from PIL import Image, ImageDraw
+        # Create simple share image
+        W, H = 1080, 1350  # IG portrait friendly
         bg = Image.new('RGB', (W,H), card['color_primary'])
         draw = ImageDraw.Draw(bg)
+
+        # Title area
         pad = 64
-        title = f"AI 幸運卡｜{card['system']}"
+        title = f"幸運99｜{card['system']}"
         draw.text((pad, pad), title, fill=(30,30,30))
 
+        # Text blocks (wrap)
         def write_block(y, label, content):
             draw.text((pad, y), label, fill=(50,50,50))
             y += 48
             import textwrap
             wrapped = textwrap.fill(content, width=18)
             draw.multiline_text((pad, y), wrapped, fill=(20,20,20), spacing=8)
+            # estimate new y
             lines = wrapped.count('\n') + 1
             return y + 32*lines + 24
 
@@ -171,8 +184,10 @@ if card:
         y = write_block(y, '籤語', card['fortune'])
         y = write_block(y, '小語', card['note'])
         y = write_block(y, '今日任務', card['task'])
+
+        # Footer
         draw.text((pad, H-100), f"{username} · {datetime.now().date()}", fill=(40,40,40))
-        draw.text((W-520, H-100), 'gracefo.com · 永傳家族傳承導師', fill=(40,40,40))
+        draw.text((W-460, H-100), "lucky99.app（示例）", fill=(40,40,40))
 
         out_path = os.path.join(DATA_DIR, f"share_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
         bg.save(out_path, 'PNG')

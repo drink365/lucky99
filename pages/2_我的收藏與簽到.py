@@ -1,4 +1,9 @@
 
+import streamlit as st, os, pandas as pd, csv
+from datetime import datetime, timedelta
+
+BRAND = "幸運99"
+
 CARD_SYSTEMS = {
     "貴人": {
         "color_primary": "#F2D9B3",
@@ -85,22 +90,24 @@ CARD_SYSTEMS = {
         }
     }
 }
+
 SCHOOLS = ["占星", "心理", "宇宙"]
 DEFAULT_USER = "訪客"
+
 import os
-DATA_DIR = os.path.join(os.getcwd(), "data") if os.path.exists(os.path.join(os.getcwd(), "data")) else "/mnt/data"
+# 使用專案根目錄的 data 資料夾（安全相對路徑）
+DATA_DIR = os.path.join(os.getcwd(), "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 DRAW_LOG = os.path.join(DATA_DIR, "draw_log.csv")
 SIGNIN_LOG = os.path.join(DATA_DIR, "signin_log.csv")
-os.makedirs(DATA_DIR, exist_ok=True)
 
-import streamlit as st, os, pandas as pd, csv
-from datetime import datetime, timedelta
 
 st.set_page_config(page_title='我的收藏與簽到', page_icon='📚', layout='centered')
 st.title('📚 我的收藏與簽到')
 
 username = st.session_state.get('username') or DEFAULT_USER
 
+# Load draws
 cols = ['ts','user','system','school','fortune','note','task']
 if os.path.exists(DRAW_LOG):
     df = pd.read_csv(DRAW_LOG)
@@ -115,13 +122,14 @@ if df.empty:
 else:
     for _, row in df.head(20).iterrows():
         with st.expander(f"🃏 {row['ts']} ｜ {row['system']}卡（{row['school']}）"):
-            st.markdown(f"**籤語**：{row['fortune']}" )
-            st.markdown(f"**小語**：{row['note']}" )
-            st.markdown(f"**今日任務**：{row['task']}" )
+            st.markdown(f"**籤語**：{row['fortune']}")
+            st.markdown(f"**小語**：{row['note']}")
+            st.markdown(f"**今日任務**：{row['task']}")
 
 st.markdown('---')
 st.subheader('✅ 每日簽到（連續天數計算）')
 
+# Sign-in log
 def load_signin():
     if os.path.exists(SIGNIN_LOG):
         return pd.read_csv(SIGNIN_LOG)
@@ -145,6 +153,7 @@ else:
         save_signin(today, username)
         st.success('已完成簽到！請重新載入頁面查看。')
 
+# Streak calc
 user_days = sorted(signin_df[signin_df['user']==username]['date'].tolist())
 streak = 0
 cur = datetime.now().date()

@@ -2,8 +2,13 @@
 import streamlit as st
 import hashlib
 from PIL import Image
+import os
 
-st.set_page_config(page_title='AI 幸運卡平台', page_icon='assets/favicon.png', layout='wide')
+st.set_page_config(page_title='幸運99', page_icon='assets/favicon.png', layout='wide')
+
+# 準備本地 data 目錄
+DATA_DIR = os.path.join(os.getcwd(), "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
 if 'username' not in st.session_state:
     st.session_state.username = ''
@@ -24,7 +29,7 @@ def user_code(name: str):
 code = user_code(st.session_state.username)
 st.sidebar.markdown(f'**你的推薦碼**：`{code}`')
 
-st.title('🌟 AI 幸運卡平台｜品牌核心宣言')
+st.title('🌟 幸運99｜品牌核心宣言')
 
 st.markdown(
     """
@@ -51,4 +56,4 @@ with col3:
     st.page_link('pages/3_分享與推薦.py', label='分享與推薦', icon='📣')
 
 st.markdown('---')
-st.caption('© 2025 永傳家族傳承導師｜AI 幸運卡平台（MVP）')
+st.caption('© 2025 幸運99（Lucky99）｜情緒療癒品牌 MVP')
