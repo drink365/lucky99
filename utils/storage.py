@@ -50,39 +50,6 @@ def append_row(path: str, row: Dict[str, str], cols: List[str]):
         if not exists: w.writeheader()
         w.writerow(safe_row)
 
-def upsert_subscription_record(user: str, plan: str, stripe_customer: str, stripe_subscription: str, current_period_end: Optional[int], status: str):
-    os.makedirs(DATA_DIR, exist_ok=True)
-    items = []
-    if os.path.exists(SUBS_LOG):
-        with open(SUBS_LOG, "r", encoding="utf-8") as f:
-            r = csv.DictReader(f); items = list(r)
-    found = False
-    for it in items:
-        if it.get("user")==user:
-            it.update({
-                "plan": plan,
-                "stripe_customer": stripe_customer or "",
-                "stripe_subscription": stripe_subscription or "",
-                "current_period_end": str(current_period_end or ""),
-                "status": status,
-                "updated_at": datetime.datetime.now().isoformat(timespec="seconds")
-            })
-            found = True; break
-    if not found:
-        items.append({
-            "user": user,
-            "plan": plan,
-            "stripe_customer": stripe_customer or "",
-            "stripe_subscription": stripe_subscription or "",
-            "current_period_end": str(current_period_end or ""),
-            "status": status,
-            "updated_at": datetime.datetime.now().isoformat(timespec="seconds")
-        })
-    with open(SUBS_LOG, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=SUBS_COLS)
-        w.writeheader()
-        for it in items: w.writerow(it)
-
 def get_subscription_detail(user: str) -> Tuple[str, Optional[int], str]:
     if not os.path.exists(SUBS_LOG): return "Free", None, "canceled"
     try:

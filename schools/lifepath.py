@@ -22,5 +22,5 @@ def analysis(birth_date, detail=False):
     meaning = LIFE_MEANINGS.get(n,"")
     if not detail:
         return f"你的生命靈數是 **{n}**：{meaning}\n\n本月建議：聚焦一件能讓你增加 {meaning[:2]} 的行動。"
-    tips = "事業：針對最強項目設 KPI；關係：用傾聽替代反驳；健康：固定節奏。"
+    tips = "事業：針對最強項目設 KPI；關係：用傾聽替代反駁；健康：固定節奏。"
     return f"【詳細版】靈數 {n}：{meaning}\n{tips}"
