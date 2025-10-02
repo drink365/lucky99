@@ -1,0 +1,6 @@
+user,plan,stripe_customer,stripe_subscription,current_period_end,status,updated_at
+test_pro,Pro,cus_test_pro_001,sub_test_pro_001,1767225599,active,2025-10-02T21:47:58
+test_vip,VIP,cus_test_vip_002,sub_test_vip_002,1769903999,active,2025-10-02T21:47:58
+test_expired,Pro,cus_test_expired_003,sub_test_expired_003,1719791999,canceled,2025-10-02T21:49:19
+test_trial,Pro,cus_test_trial_004,sub_test_trial_004,1761004799,trialing,2025-10-02T21:50:01
+test_past_due,Pro,cus_test_past_due_005,sub_test_past_due_005,1763251199,past_due,2025-10-02T21:50:49
