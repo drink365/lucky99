@@ -41,3 +41,7 @@ def draw_three(seed=None):
         slot = ["過去","現在","未來"][i]
         out.append({"slot": slot, "name": name, "pose": pose, "meaning": meaning})
     return out
+def analysis(question: str):
+    base = "塔羅是一種以 78 張原型符號反映當下能量的工具。"
+    ask = f"你的提問是「{question}」。" if question else "建議先聚焦一個問題（例如：本月合作運勢如何？）。"
+    return f"{base}\n{ask}\n接下來你可以抽單張（快速提醒）或三張（過去/現在/未來）。"

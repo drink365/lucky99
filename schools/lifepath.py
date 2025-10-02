@@ -16,8 +16,8 @@ LIFE_MEANINGS = {
     8:"目標與成果。適合衝刺 KPI、談判資源。",
     9:"願景與助人。適合公益、分享、回饋社群。",
 }
-def decorate_note(base_note: str, birth_date):
-    lp = calc_life_path(birth_date)
-    if not lp: return base_note
-    extra = LIFE_MEANINGS.get(lp, "")
-    return f"[生命靈數 {lp}] {extra}｜{base_note}"
+def analysis(birth_date):
+    n = calc_life_path(birth_date)
+    if not n: return "請輸入生日以計算生命靈數。"
+    meaning = LIFE_MEANINGS.get(n,"")
+    return f"你的生命靈數是 **{n}**：{meaning}\n\n本月建議：聚焦一件能讓你增加 {meaning[:2]} 的行動。"

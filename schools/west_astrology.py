@@ -1,4 +1,3 @@
-from datetime import date
 ZODIAC_DATES = [
     ("摩羯座", (12,22), (1,19)), ("水瓶座", (1,20), (2,18)), ("雙魚座", (2,19), (3,20)),
     ("牡羊座", (3,21), (4,19)), ("金牛座", (4,20), (5,20)), ("雙子座", (5,21), (6,21)),
@@ -20,7 +19,7 @@ SIGN_TIPS = {
     "雙魚座":"信任直覺，擁抱流動。",
 }
 def sun_sign(birth_date):
-    y = 2000
+    if not birth_date: return None
     bd = (birth_date.month, birth_date.day)
     for sign, (m1,d1), (m2,d2) in ZODIAC_DATES:
         start = (m1,d1); end = (m2,d2)
@@ -29,5 +28,8 @@ def sun_sign(birth_date):
         else:
             if bd >= start or bd <= end: return sign
     return "摩羯座"
-def tip_for(sign: str):
-    return SIGN_TIPS.get(sign, "")
+def analysis(birth_date):
+    if not birth_date: return "請輸入生日以判斷太陽星座。"
+    sign = sun_sign(birth_date)
+    tip = SIGN_TIPS.get(sign,"")
+    return f"你的太陽星座是 **{sign}**。\n本月提醒：{tip}"
