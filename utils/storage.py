@@ -1,16 +1,47 @@
-import os, csv, shutil, pandas as pd, datetime
+import os, csv, shutil
 from typing import Dict, List, Optional, Tuple
+import datetime
 
+# pandas is optional at runtime; guard import to avoid crash
+try:
+    import pandas as pd
+except Exception:
+    pd = None  # type: ignore
+
+# Data directory
 DATA_DIR = os.path.join(os.getcwd(), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-DRAW_LOG   = os.path.join(DATA_DIR, "draw_log.csv")
-SUBS_LOG   = os.path.join(DATA_DIR, "subscriptions.csv")
+# File paths
+DRAW_LOG = os.path.join(DATA_DIR, "draw_log.csv")
+SUBS_LOG = os.path.join(DATA_DIR, "subscriptions.csv")
 
+# Schemas
 COLS: List[str] = ["ts","user","system","school","fortune","note","task","school_key","inputs"]
 SUBS_COLS = ["user","plan","stripe_customer","stripe_subscription","current_period_end","status","updated_at"]
 
-def safe_read_csv(path: str, cols: List[str]) -> pd.DataFrame:
+def safe_read_csv(path: str, cols: List[str]):
+    """
+    Safe CSV reader: returns a pandas.DataFrame if pandas is available,
+    otherwise returns a list[dict]. Always includes provided columns.
+    """
+    if pd is None:
+        # Fallback without pandas
+        rows: List[Dict[str, str]] = []
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            return rows
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                r = csv.DictReader(f)
+                for row in r:
+                    rows.append({c: row.get(c, "") for c in cols})
+        except Exception:
+            try:
+                shutil.copy(path, path + ".bak")
+            except Exception:
+                pass
+        return rows
+    # pandas path
     if not os.path.exists(path) or os.path.getsize(path) == 0:
         return pd.DataFrame(columns=cols)
     try:
@@ -73,20 +104,29 @@ def upsert_subscription_record(user: str, plan: str, stripe_customer: str, strip
         for it in items:
             w.writerow(it)
 
-def get_subscription(user: str) -> str:
-    plan, expiry, status = get_subscription_detail(user)
-    if status not in ("active","trialing"):
-        return "Free"
-    if expiry and expiry < int(datetime.datetime.now().timestamp()):
-        return "Free"
-    return plan or "Free"
-
 def get_subscription_detail(user: str) -> Tuple[str, Optional[int], str]:
-    path = SUBS_LOG
-    if not os.path.exists(path):
+    """
+    Return (plan, current_period_end_ts, status). Fallback to ('Free', None, 'canceled')
+    """
+    if not os.path.exists(SUBS_LOG):
         return "Free", None, "canceled"
     try:
-        df = pd.read_csv(path)
+        if pd is None:
+            last = None
+            with open(SUBS_LOG, "r", encoding="utf-8") as f:
+                r = csv.DictReader(f)
+                for row in r:
+                    if row.get("user")==user:
+                        last = row
+            if not last:
+                return "Free", None, "canceled"
+            plan = last.get("plan") or "Free"
+            status = last.get("status") or "canceled"
+            cpe_raw = last.get("current_period_end") or ""
+            expiry_ts = int(float(cpe_raw)) if cpe_raw.isdigit() else None
+            return plan, expiry_ts, status
+        # pandas branch
+        df = pd.read_csv(SUBS_LOG)
         row = df[df["user"]==user].tail(1)
         if row.empty:
             return "Free", None, "canceled"
@@ -102,3 +142,12 @@ def get_subscription_detail(user: str) -> Tuple[str, Optional[int], str]:
         return plan, expiry_ts, status
     except Exception:
         return "Free", None, "canceled"
+
+def get_subscription(user: str) -> str:
+    plan, expiry, status = get_subscription_detail(user)
+    now_ts = int(datetime.datetime.now().timestamp())
+    if status not in ("active","trialing"):
+        return "Free"
+    if expiry and expiry < now_ts:
+        return "Free"
+    return plan or "Free"
