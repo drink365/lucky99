@@ -1,8 +1,11 @@
-import os, csv, hashlib
+import os, sys, csv, hashlib, random
 from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
-from PIL import Image
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 st.set_page_config(page_title="幸運99", page_icon="assets/favicon.png", layout="wide")
 st.markdown("""
@@ -17,6 +20,8 @@ from utils.storage import DRAW_LOG, SIGNIN_LOG, COLS, safe_read_csv, append_row
 from utils.share_image import build_share_image
 from schools.registry import SCHOOLS
 from schools.lifepath import decorate_note
+from schools.tarot import draw_one as tarot_draw_one
+from schools.west_astrology import sun_sign, tip_for
 
 CARD_SYSTEMS = {
     "貴人": {"color_primary":"#F2D9B3","color_secondary":"#FBEDE3","samples":{
@@ -42,7 +47,6 @@ CARD_SYSTEMS = {
 }
 
 DEFAULT_USER = "訪客"
-
 def user_code(name: str) -> str:
     if not name: return "guest"
     import hashlib
@@ -121,8 +125,23 @@ with colA:
             "school_key": school_key,
             "inputs": user_inputs,
         }
+        # 🟣 Tarot single-card customization
+        if school_key == "tarot":
+            seed = f"{username}-{datetime.now().date()}-{system}"
+            result = tarot_draw_one(seed=seed)
+            q = user_inputs.get("question") or "今天的提醒"
+            card["fortune"] = f"塔羅指引《{result['name']}·{result['pose']}》：{result['meaning']}"
+            card["note"] = f"針對「{q}」，掌握牌義行動的第一步。｜{card['note']}"
+            card["task"] = "把你可行的一步寫下，今天就做。"
+        # 🟠 Sun sign astrology customization
+        if school_key == "west_astrology" and user_inputs.get("birth_date"):
+            sign = sun_sign(user_inputs["birth_date"])
+            tip = tip_for(sign)
+            card["note"] = f"[{sign}] {tip}｜{card['note']}"
+        # 🟡 Life path customization
         if school_key == "lifepath" and user_inputs.get("birth_date"):
             card["note"] = decorate_note(card["note"], user_inputs["birth_date"])
+
         st.session_state["last_card"] = card
         append_row(DRAW_LOG, card, COLS)
 
@@ -220,7 +239,7 @@ with colp:
     st.markdown("""
 **Pro（月 NT$99）**
 - 無限抽卡、去廣告
-- 學派進階解讀（生命靈數＋塔羅 3 張牌）
+- 「塔羅單張」與「生命靈數」進階解讀
 - 收藏雲端同步
 """)
 with colv:

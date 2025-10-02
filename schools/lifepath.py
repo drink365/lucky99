@@ -5,7 +5,6 @@ def calc_life_path(date_obj):
     while n > 9:
         n = sum(int(c) for c in str(n))
     return n
-
 LIFE_MEANINGS = {
     1:"領導與開創。今日適合主動提案、做決策。",
     2:"協作與傾聽。適合溝通協調、拉近關係。",
@@ -17,7 +16,6 @@ LIFE_MEANINGS = {
     8:"目標與成果。適合衝刺 KPI、談判資源。",
     9:"願景與助人。適合公益、分享、回饋社群。",
 }
-
 def decorate_note(base_note: str, birth_date):
     lp = calc_life_path(birth_date)
     if not lp: return base_note

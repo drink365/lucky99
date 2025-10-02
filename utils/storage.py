@@ -1,16 +1,12 @@
 import os, csv, shutil, pandas as pd
 from typing import Dict, List
-
 DATA_DIR = os.path.join(os.getcwd(), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
-
 DRAW_LOG   = os.path.join(DATA_DIR, "draw_log.csv")
 SIGNIN_LOG = os.path.join(DATA_DIR, "signin_log.csv")
-
 COLS: List[str] = [
     "ts","user","system","school","fortune","note","task","school_key","inputs"
 ]
-
 def safe_read_csv(path: str, cols: List[str]) -> pd.DataFrame:
     if not os.path.exists(path) or os.path.getsize(path) == 0:
         return pd.DataFrame(columns=cols)
@@ -26,7 +22,6 @@ def safe_read_csv(path: str, cols: List[str]) -> pd.DataFrame:
         except Exception:
             pass
         return pd.DataFrame(columns=cols)
-
 def append_row(path: str, row: Dict[str, str], cols: List[str]):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     exists = os.path.exists(path)
