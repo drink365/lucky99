@@ -1,6 +1,6 @@
-# 幸運99（Lucky99）— 抽卡 × 情緒療癒 × 品牌 IP（MVP）
+# 幸運99（Lucky99）— 模組化重構版
 
-安裝：
+啟動：
 ```
 pip install -r requirements.txt
 streamlit run app.py
