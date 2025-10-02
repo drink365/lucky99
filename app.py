@@ -1,6 +1,11 @@
 import os, sys, hashlib
 from datetime import datetime, date
 import streamlit as st
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from utils.storage import DRAW_LOG, COLS, append_row
 from utils.share_image import build_share_image
 from schools.registry import SCHOOLS
@@ -11,15 +16,11 @@ from schools.zodiac_cn import analysis as zodiac_analysis
 from schools.ziwei import analysis as ziwei_analysis
 from schools.bazi import analysis as bazi_analysis
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
 st.set_page_config(page_title="幸運99", page_icon="assets/favicon.png", layout="wide")
 st.markdown("<style>.block-container{max-width:1280px}</style>", unsafe_allow_html=True)
 
 st.image("assets/logo.png", width=80)
-st.title("🌟 幸運99｜學派分析 → 抽卡提醒（擴充版）")
+st.title("🌟 幸運99｜學派分析 → 抽卡提醒（覆蓋版）")
 
 # User panel
 with st.container(border=True):
@@ -41,7 +42,7 @@ with left:
 with right:
     st.markdown(f"**學派簡介**：{SCHOOLS[school_key]['desc']}")
 
-# Collect inputs
+# Inputs
 user_inputs = {}
 reqs = SCHOOLS[school_key]["requires"]
 a,b,c = st.columns(3)
@@ -54,7 +55,7 @@ if "gender" in reqs:
 if "question" in reqs:
     user_inputs["question"] = st.text_input("你的提問（例如：本月適合談合作嗎？）")
 
-# Analysis
+# Analysis-first
 st.subheader("📘 學派分析")
 analysis_text = ""
 if school_key == "lifepath":
@@ -73,7 +74,7 @@ st.markdown(analysis_text or "填入必要資料後，將顯示你的分析報�
 
 st.markdown("---")
 
-# Draw
+# Draw card
 st.subheader("🎲 抽卡提醒")
 CARD_SYSTEMS = {
     "貴人":{"color_primary":"#F2D9B3","color_secondary":"#FBEDE3","samples":{"占星":{"fortune":"星盤顯示貴人正在靠近你。","note":"你不必獨自一人走完全程，宇宙已經在安排相遇。","task":"主動問候一位好久不聯絡的朋友。"},"心理":{"fortune":"你內在的守護者原型正準備出場。","note":"允許自己接受幫助，是成熟與勇氣。","task":"今天說出一句『需要幫忙』，並接受它。"},"宇宙":{"fortune":"銀光小狐將在你需要時出現。","note":"當你善待自己，貴人就會看見你的光。","task":"寫下感謝清單 3 件事。"}}},
@@ -136,4 +137,4 @@ with colB:
         with open(out_path, "rb") as fr:
             st.download_button("下載分享圖（PNG）", data=fr.read(), file_name=os.path.basename(out_path), mime="image/png", use_container_width=True)
 
-st.caption("© 2025 幸運99（Lucky99）｜學派分析 → 抽卡提醒（擴充版）")
+st.caption("© 2025 幸運99（Lucky99）｜學派分析 → 抽卡提醒（覆蓋版）")
