@@ -12,10 +12,12 @@ TRAITS = {
     11:"創新與前瞻，適合新創與科技。",
     12:"沉澱與療癒，適合內在修煉與顧問。",
 }
-def analysis(birth_date, gender:str):
+def analysis(birth_date, gender:str, detail=False):
     if not birth_date: return "請輸入生日。"
     m = birth_date.month
     trait = TRAITS.get(m, "穩健中求變。")
     g = gender or "女"
     note = "今年關鍵字：整合、節奏、貴人。"
-    return f"推估命宮性格（簡版）：**{trait}**\n性別：{g}｜{note}"
+    if not detail:
+        return f"推估命宮性格（簡版）：**{trait}**\n性別：{g}｜{note}"
+    return f"【詳細版】命宮傾向：{trait}｜策略：聚焦 1 個舞台、建立固定節奏、善用貴人資源。"

@@ -20,9 +20,11 @@ def zodiac_of(birth_date):
     y = birth_date.year
     idx = (y - SHENGXIAO_YEAR0) % 12
     return SHENGXIAO_ORDER[idx]
-def analysis(birth_date, year=2025):
+def analysis(birth_date, detail=False, year=2025):
     z = zodiac_of(birth_date)
     if not z: return "請輸入生日以判斷生肖。"
     base = TEMPLATES.get(z, "今年以穩為主，循序漸進。")
     lines = [f"- **{aspect}**：{base}" for aspect in ASPECTS]
-    return f"你的生肖是 **{z}**。\n**{year} 流年重點**：\n" + "\n".join(lines)
+    if not detail:
+        return f"你的生肖是 **{z}**。\n**{year} 流年重點**：\n" + "\n".join(lines)
+    return f"【詳細版】{z}：四面向行動計畫：1) 優先清單 2) 番茄鐘節奏 3) 每週檢視。"

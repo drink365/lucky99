@@ -1,6 +1,7 @@
 import os, sys, hashlib
 from datetime import datetime, date
 import streamlit as st
+import stripe
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
@@ -8,6 +9,7 @@ if BASE_DIR not in sys.path:
 
 from utils.storage import DRAW_LOG, COLS, append_row, get_subscription, get_subscription_detail
 from utils.share_image import build_share_image
+from utils.reports import make_monthly_report
 from utils.subscription_status import show_user_status
 from schools.registry import SCHOOLS
 from schools.lifepath import analysis as lifepath_analysis
@@ -20,8 +22,33 @@ from schools.bazi import analysis as bazi_analysis
 st.set_page_config(page_title="幸運99", page_icon="assets/favicon.png", layout="wide")
 st.markdown("<style>.block-container{max-width:1280px}</style>", unsafe_allow_html=True)
 
+# Stripe config
+cfg = st.secrets.get("stripe", {})
+STRIPE_SECRET = cfg.get("secret_key", "")
+PUBLISHABLE = cfg.get("publishable_key", "")
+PRICE_PRO = cfg.get("price_pro", "")
+PRICE_VIP = cfg.get("price_vip", "")
+WEBHOOK_SECRET = cfg.get("webhook_secret", "")
+APP_BASE_URL = cfg.get("app_base_url", "")
+if STRIPE_SECRET: stripe.api_key = STRIPE_SECRET
+def current_app_url(): return (APP_BASE_URL or "http://localhost:8501").rstrip("/")
+def create_checkout_session(username: str, plan: str):
+    price = PRICE_PRO if plan=="Pro" else PRICE_VIP
+    assert price, "請先在 secrets.toml 設定 price_pro / price_vip"
+    session = stripe.checkout.Session.create(
+        mode="subscription",
+        payment_method_types=["card"],
+        line_items=[{"price": price, "quantity": 1}],
+        success_url=f"{current_app_url()}?success=1",
+        cancel_url=f"{current_app_url()}?canceled=1",
+        customer_email=None,
+        metadata={"user": username or "訪客", "plan": plan},
+    )
+    return session.url
+
+# Header
 st.image("assets/logo.png", width=80)
-st.title("🌟 幸運99｜學派分析 → 抽卡提醒（會員浮標版）")
+st.title("🌟 幸運99｜學派分析 → 抽卡提醒（ALL-IN-ONE）")
 
 # User panel
 with st.container(border=True):
@@ -42,6 +69,25 @@ plan, expiry_ts, status = get_subscription_detail(st.session_state["username"])
 st.session_state["plan"] = plan
 st.session_state["expiry_date"] = expiry_ts
 show_user_status()
+
+# Upgrade buttons
+colp, colv = st.columns(2)
+with colp:
+    st.markdown("**Pro（訂閱）**：解鎖 *塔羅三張* + *詳細分析（星座/生肖/紫微/八字/靈數）*")
+    if st.button("升級 Pro（Stripe 訂閱）"):
+        if not (STRIPE_SECRET and PUBLISHABLE and PRICE_PRO):
+            st.error("請設定 secret_key / publishable_key / price_pro")
+        else:
+            url = create_checkout_session(st.session_state["username"], "Pro")
+            st.link_button("前往 Stripe 訂閱（Pro）", url)
+with colv:
+    st.markdown("**VIP（訂閱）**：含 Pro + *每月 PDF 報告*")
+    if st.button("升級 VIP（Stripe 訂閱）"):
+        if not (STRIPE_SECRET and PUBLISHABLE and PRICE_VIP):
+            st.error("請設定 secret_key / publishable_key / price_vip")
+        else:
+            url = create_checkout_session(st.session_state["username"], "VIP")
+            st.link_button("前往 Stripe 訂閱（VIP）", url)
 
 st.markdown("---")
 
@@ -65,9 +111,11 @@ if "gender" in reqs:
 if "question" in reqs:
     user_inputs["question"] = st.text_input("你的提問（例如：本月適合談合作嗎？）")
 
-# Analysis-first (Free shows basic; Pro/VIP 可顯示詳細)
+# Analysis-first with gating
 st.subheader("📘 學派分析")
-detail = (plan in ("Pro","VIP"))
+plan_now = st.session_state.get("plan") or get_subscription(st.session_state.get("username") or "訪客")
+detail = (plan_now in ("Pro","VIP"))
+analysis_text = ""
 if school_key == "lifepath":
     from schools.lifepath import analysis as lifepath
     analysis_text = lifepath(user_inputs.get("birth_date"), detail=detail)
@@ -86,8 +134,7 @@ elif school_key == "ziwei":
 elif school_key == "bazi":
     from schools.bazi import analysis as bazi
     analysis_text = bazi(user_inputs.get("birth_date"), user_inputs.get("birth_time"), detail=detail)
-else:
-    analysis_text = ""
+
 if not detail and school_key in ("zodiac_cn","ziwei","bazi","west_astrology","lifepath"):
     analysis_text += "\n\n👉 想看【詳細版】學派分析？升級 **Pro / VIP** 立即解鎖。"
 st.markdown(analysis_text or "填入必要資料後，將顯示你的分析報告。")
@@ -111,7 +158,7 @@ def tone_for_school(key):
 colA, colB = st.columns([7,5])
 with colA:
     system = st.selectbox("選擇卡系", list(CARD_SYSTEMS.keys()), index=0)
-    tarot_mode = "單張"
+    tarot_mode = "單張（Free）"
     if school_key == "tarot":
         tarot_mode = st.radio("塔羅模式", ["單張（Free）","三張（Pro）"], horizontal=True)
     if st.button("抽一張提醒", use_container_width=True):
@@ -122,7 +169,7 @@ with colA:
                 "ts":datetime.now().isoformat(timespec="seconds"),"user":st.session_state.get("username") or "訪客","school_key":school_key,"inputs":user_inputs}
         if school_key == "tarot":
             seed = f"{st.session_state.get('username')}-{datetime.now().date()}-{system}"
-            if "三張" in tarot_mode and st.session_state.get("plan") not in ("Pro","VIP"):
+            if "三張" in tarot_mode and plan_now not in ("Pro","VIP"):
                 card["fortune"]="（Pro 付費功能）"; card["note"]="升級後可解鎖『過去-現在-未來』三張牌。"; card["task"]="先用單張模式體驗看看。"
             elif "三張" in tarot_mode:
                 tri = draw_three(seed=seed)
@@ -155,4 +202,13 @@ with colB:
         with open(out_path, "rb") as fr:
             st.download_button("下載分享圖（PNG）", data=fr.read(), file_name=os.path.basename(out_path), mime="image/png", use_container_width=True)
 
-st.caption("© 2025 幸運99（Lucky99）｜學派擴充 + 會員狀態浮標")
+# VIP report
+if plan_now=="VIP":
+    st.markdown("**🎁 VIP 專屬：每月運勢報告（PDF）**")
+    if st.button("產生本月 PDF 報告"):
+        content = "本月關鍵字：專注、節奏、信任\n\n建議：\n1. 確認你的首要目標\n2. 設定每週固定檢視\n3. 建立可被信任的節奏"
+        path = make_monthly_report(st.session_state.get("username"), content, os.path.join(os.getcwd(), "data"))
+        with open(path, "rb") as fr:
+            st.download_button("下載 PDF 報告", data=fr.read(), file_name=os.path.basename(path), mime="application/pdf")
+
+st.caption("© 2025 幸運99（Lucky99）｜學派擴充 + Stripe 訂閱 + 會員狀態浮標（ALL-IN-ONE）")

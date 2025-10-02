@@ -1,6 +1,5 @@
 from datetime import datetime
 import streamlit as st
-
 def show_user_status():
     username = st.session_state.get("username") or "訪客"
     plan = st.session_state.get("plan") or "Free"
@@ -11,7 +10,6 @@ def show_user_status():
         expiry = expiry.strftime("%Y-%m-%d")
     else:
         expiry = expiry or "—"
-
     st.markdown(
         f"""
         <div style="position: sticky; top: 0; z-index: 1000;">

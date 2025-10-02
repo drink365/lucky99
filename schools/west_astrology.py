@@ -28,8 +28,10 @@ def sun_sign(birth_date):
         else:
             if bd >= start or bd <= end: return sign
     return "摩羯座"
-def analysis(birth_date):
+def analysis(birth_date, detail=False):
     if not birth_date: return "請輸入生日以判斷太陽星座。"
     sign = sun_sign(birth_date)
     tip = SIGN_TIPS.get(sign,"")
-    return f"你的太陽星座是 **{sign}**。\n本月提醒：{tip}"
+    if not detail:
+        return f"你的太陽星座是 **{sign}**。\n本月提醒：{tip}"
+    return f"【詳細版】{sign}：事業/財運/關係/健康的節奏調整建議：1) 專注優先順序 2) 固定檢視 3) 調整資源。"

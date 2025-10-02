@@ -49,7 +49,7 @@ def stripe_webhook():
         subscription = sub.get("id") or ""
         status = sub.get("status") or "canceled"
         cpe = sub.get("current_period_end", "")
-        # TODO: 若你有保存 user <-> customer 對應，可在此更新對應用戶狀態。
+        # TODO: 如需 user <-> customer 對應，可在此更新
 
     return jsonify({"ok": True})
 
